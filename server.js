@@ -3,13 +3,13 @@ const socketio = require("socket.io"); // import biblioteki socketio
 // const moment = require('moment');
 require("dotenv").config();
 
-var fs = require("fs");
-var http = require("http");
-var https = require("https");
-var privateKey = fs.readFileSync("key.key", "utf8");
-var certificate = fs.readFileSync("key.crt", "utf8");
+let fs = require("fs");
+let http = require("http");
+let https = require("https");
+let privateKey = fs.readFileSync("key.key", "utf8");
+let certificate = fs.readFileSync("key.crt", "utf8");
 
-var credentials = { key: privateKey, cert: certificate };
+let credentials = { key: privateKey, cert: certificate };
 
 const app = express(); // pobieram instancje serwera
 
