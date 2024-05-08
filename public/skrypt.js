@@ -23,7 +23,7 @@ $("#login-submit").addEventListener("click", (e) => {
   const password = $("#passsword").value;
 
   socket.emit("login", name, password);
-  console.log(name + " | " + password);
+  //console.log(name + " | " + password);
 });
 
 socket.on("loginerror", () => {
@@ -37,6 +37,24 @@ socket.on("loginIN", (accont_name) => {
   userName = accont_name;
   socket.emit("witaj", userName, idKlienta); // callaback - start
 });
+
+socket.on("loadmesseges", (place, messeges) => {
+  console.log("Wiadomości wczytane!", place, messeges);
+
+  messeges.reverse();
+  let main = $("main");
+  for(let data of messeges) {
+    let mess = `<div>
+                      <h3>${data.sender} - <span> ${data.data}</h3>
+                      <p>${data.messege}</p>
+                  </div>`;
+    $("main").scrollTo(0, $("main").Height + 100);
+    main.innerHTML += mess;
+  }
+
+  $("main").scrollTop = $("main").scrollHeight;
+});
+
 
 let selUser = "Wszyscy";
 
@@ -55,6 +73,8 @@ socket.on("goscie", (listaGosci) => {
     linia.id = klient.id;
     linia.addEventListener("click", (e) => {
       klikniecieKlienta(e.target, klient.id);
+      $("main").innerHTML = "";
+      socket.emit("loadmessegs_server", klient.Klient);
     });
     linia.innerText = klient.Klient;
     nav.append(linia);
@@ -70,16 +90,20 @@ function klikniecieKlienta(th, id) {
   selUser = id;
 }
 
-socket.on("wiadomosc", (wiadomosc, nazwaKlienta, opcje) => {
+socket.on("wiadomosc", (wiadomosc, nazwaKlienta, opcje, extra_check = false) => {
   let main = $("main");
 
-  let mom = moment(opcje.time).format("YYYY-MM-DD HH:mm:ss");
+  if(extra_check && $(".sel").innerHTML != nazwaKlienta)
+    return
+
   let mess = `<div>
-                    <h3>${nazwaKlienta} - <span> ${mom}</h3>
+                    <h3>${nazwaKlienta} - <span> ${opcje}</h3>
                     <p>${wiadomosc}</p>
                 </div>`;
   $("main").scrollTo(0, $("main").Height + 100);
   main.innerHTML += mess;
+
+  $("main").scrollTop = $("main").scrollHeight;
 });
 
 $("#chat").addEventListener("keyup", (e) => {
@@ -100,7 +124,7 @@ function akt_licznik() {
     .then((e) => e.json()) // przemień na json
     .then((dane) => {
       // dane z licznika
-      $("h3 > span").innerHTML = dane.licznik;
+      $("h3 > b > span").innerHTML = dane.licznik;
     });
 }
 

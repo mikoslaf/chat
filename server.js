@@ -3,6 +3,8 @@ const socketio = require("socket.io"); // import biblioteki socketio
 // const moment = require('moment');
 require("dotenv").config();
 
+const moment = require('moment');
+
 let fs = require("fs");
 let http = require("http");
 let https = require("https");
@@ -39,11 +41,11 @@ const io = socketio(serwer, {
 let ClientDB = [];
 
 const sqlite3 = require("sqlite3").verbose();
-const db = new sqlite3.Database("Test.db");
+const db = new sqlite3.Database("ChatDB.db");
 
 db.serialize(() => {
   db.run(
-    "CREATE TABLE IF NOT EXISTS messeges (sender TEXT, place TEXT, messege TEXT)"
+    "CREATE TABLE IF NOT EXISTS messeges (sender TEXT, place TEXT, messege TEXT, data TEXT)"
   );
   db.run("CREATE TABLE IF NOT EXISTS users (name TEXT, password TEXT)");
 
@@ -54,20 +56,6 @@ db.serialize(() => {
     stmt.run("Ipsum " + i, "test", "jakis tekst");
   }
   stmt.finalize();
-
-  //   const stmt2 = db.prepare("INSERT INTO users (name, password) VALUES (?, ?)");
-  //   stmt2.run("Tomek", "haslo");
-  //   stmt2.finalize();
-
-  db.each(
-    "SELECT rowid AS id, sender, place, messege FROM messeges",
-    (_err, row) => {
-      console.log(
-        row.id + ": " + row.sender + ": " + row.place + " " + row.messege
-      );
-      //console.log(JSON.parse(row));
-    }
-  );
 });
 
 // CID('idsoketu') z ClientDB.filter(e=>e.socketid == 'idsoketu')[0]
@@ -86,11 +74,27 @@ function findClientById(socketList, clientId) {
   return null; // Zwróć null, jeśli klient o danym id nie został znaleziony
 }
 
+function loadmesseges(place) {
+  db.all(
+    'SELECT * FROM messeges WHERE place = "' + place + '" ORDER BY data DESC LIMIT 50',
+    (err, row) => {
+      if (err) {
+        console.error("Błąd podczas wykonywania zapytania:", err);
+        return;
+      }
+
+      if (row) {
+        io.sockets.emit("loadmesseges", place, row);
+      }
+    }
+  );
+}
+
 io.on("connection", (klient) => {
   console.log("Klient nawiązał połączenie", klient.id);
 
   klient.on("login", (name, password) => {
-    console.log("test123" + name);
+    console.log("Loguje się " + name);
     db.get(
       'SELECT name, password FROM users WHERE name = "' + name + '"',
       (err, row) => {
@@ -116,29 +120,35 @@ io.on("connection", (klient) => {
 
   klient.on("wiadomosc", (wiadomosc, userid) => {
     let client = CID(klient.id);
-    console.log(client);
-    console.log("sendid", userid);
     if (client) {
-      // console.log(wiadomosc, client);
-      let option = {
-        time: new Date(),
-      };
-      // console.log(option);
+
+      //console.log(moment(new Date()).format('YYYY-MM-DD HH:mm:ss'));
+
+      const current_date = moment(new Date()).format('YYYY-MM-DD HH:mm:ss');
+      
       if (userid == "Wszyscy") {
-        // const stmt = db.prepare("INSERT INTO messeges (sender, place, messege) VALUES (?, ?, ?)");
-        //     for (let i = 0; i < 0; i++) {
-        //     stmt.run("Ipsum " + i, "test", "jakis tekst");
-        //     }
-        // stmt.finalize();
-        io.sockets.emit("wiadomosc", wiadomosc, client.Klient, option);
+        io.sockets.emit("wiadomosc", wiadomosc, client.Klient, current_date);
+
+        const new_messeg = db.prepare(
+          "INSERT INTO messeges (sender, place, messege, data) VALUES (?, ?, ?, ?)"
+        );
+        new_messeg.run(client.Klient, "Wszyscy", wiadomosc, current_date);
+        new_messeg.finalize();
+
+
       } else {
         let odbiorca = KID(userid);
-        // console.log('test',odbiorca)
         if (odbiorca) {
           const foundSocket = findClientById(io.sockets.sockets, userid);
           if (foundSocket)
-            foundSocket.emit("wiadomosc", wiadomosc, client.Klient, option);
-          klient.emit("wiadomosc", wiadomosc, client.Klient, option);
+            foundSocket.emit("wiadomosc", wiadomosc, client.Klient, current_date, true);
+          klient.emit("wiadomosc", wiadomosc, client.Klient, current_date);
+
+          const new_messeg = db.prepare(
+            "INSERT INTO messeges (sender, place, messege, data) VALUES (?, ?, ?, ?)"
+          );
+          new_messeg.run(client.Klient, odbiorca.Klient, wiadomosc, current_date);
+          new_messeg.finalize();
         }
       }
     }
@@ -161,7 +171,13 @@ io.on("connection", (klient) => {
       client.Klient = klientNazwa;
       client.socketid = klient.id;
     }
+    // console.log("Client BD", ClientDB);
+    loadmesseges("Wszyscy");
     io.sockets.emit("goscie", ClientDB);
+  });
+
+  klient.on("loadmessegs_server", (place) => {
+    loadmesseges(place);
   });
 });
 
