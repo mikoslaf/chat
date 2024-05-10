@@ -32,13 +32,21 @@ socket.on("loginerror", () => {
 });
 
 socket.on("loginIN", (accont_name) => {
+  if($("#login-name").value != accont_name)
+    return;
   console.log("Zostałeś zalogowany");
   Modal.hide();
   userName = accont_name;
   socket.emit("witaj", userName, idKlienta); // callaback - start
 });
 
+let last_load = "";
+
 socket.on("loadmesseges", (place, messeges) => {
+  if($(".sel").innerHTML != place || last_load == place)
+    return
+
+  last_load = place;
   console.log("Wiadomości wczytane!", place, messeges);
 
   messeges.reverse();
@@ -90,10 +98,11 @@ function klikniecieKlienta(th, id) {
   selUser = id;
 }
 
-socket.on("wiadomosc", (wiadomosc, nazwaKlienta, opcje, extra_check = false) => {
+socket.on("wiadomosc", (wiadomosc, nazwaKlienta, opcje, channel = "") => {
   let main = $("main");
 
-  if(extra_check && $(".sel").innerHTML != nazwaKlienta)
+  console.log(channel);
+  if($(".sel").innerHTML != channel)
     return
 
   let mess = `<div>
@@ -108,7 +117,7 @@ socket.on("wiadomosc", (wiadomosc, nazwaKlienta, opcje, extra_check = false) => 
 
 $("#chat").addEventListener("keyup", (e) => {
   if (e.keyCode == 13) {
-    socket.emit("wiadomosc", e.target.value, selUser);
+    socket.emit("wiadomosc", e.target.value, selUser, $(".sel").innerHTML);
     e.target.value = "";
   }
 });

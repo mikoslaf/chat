@@ -118,7 +118,7 @@ io.on("connection", (klient) => {
     );
   });
 
-  klient.on("wiadomosc", (wiadomosc, userid) => {
+  klient.on("wiadomosc", (wiadomosc, userid, channel) => {
     let client = CID(klient.id);
     if (client) {
 
@@ -126,8 +126,8 @@ io.on("connection", (klient) => {
 
       const current_date = moment(new Date()).format('YYYY-MM-DD HH:mm:ss');
       
-      if (userid == "Wszyscy") {
-        io.sockets.emit("wiadomosc", wiadomosc, client.Klient, current_date);
+      if (channel == "Wszyscy") {
+        io.sockets.emit("wiadomosc", wiadomosc, client.Klient, current_date, channel);
 
         const new_messeg = db.prepare(
           "INSERT INTO messeges (sender, place, messege, data) VALUES (?, ?, ?, ?)"
@@ -139,10 +139,10 @@ io.on("connection", (klient) => {
       } else {
         let odbiorca = KID(userid);
         if (odbiorca) {
-          const foundSocket = findClientById(io.sockets.sockets, userid);
-          if (foundSocket)
-            foundSocket.emit("wiadomosc", wiadomosc, client.Klient, current_date, true);
-          klient.emit("wiadomosc", wiadomosc, client.Klient, current_date);
+          // const foundSocket = findClientById(io.sockets.sockets, userid);
+          // if (foundSocket)
+          //    foundSocket.emit("wiadomosc", wiadomosc, client.Klient, current_date, );
+          io.sockets.emit("wiadomosc", wiadomosc, client.Klient, current_date, channel);
 
           const new_messeg = db.prepare(
             "INSERT INTO messeges (sender, place, messege, data) VALUES (?, ?, ?, ?)"
